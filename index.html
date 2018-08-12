@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PHP - Stream Upload Large File</title>
+	<meta charset="UTF-8" />
+	<script>
+		/********************************************************************
+		 * H-JS Stream Upload Large File									*
+		 * Developed & Designed By Master Hery								*
+		 * Mid April 2018													*
+		 *																	*
+		 * This small function implements FileReader API and send to		*
+		 * Server via XMLHttpRequest API.									*
+		 *																	*
+		 * This code has been developed firstly in 2016, but have been		*
+		 * altered in 2018 for improvement and avoid deprecation.			*
+		 *																	*
+		 * First developed were using FileReader.ReadAsBinaryString.		*
+		 * This design patent were good but not work in Mozilla if			*
+		 * the file larger than 200MB.										*
+		 *																	*
+		 * This alteration are using FileReader.ReadAsArrayBuffer and		*
+		 * now accept to uplod files up to more than 1GB and has been		*
+		 * tested on PHP server will maximum execution time to 60			*
+		 * minutes.															*
+		 *																	*
+		 * The original author of this code on furst version I forgot his	*
+		 * name and his website. I ll put the name here if I remeber.		*
+		 * Contact me at heryintelt@gmail.com								*
+		 * ******************************************************************/
+		 
+		function upload(fileInputId, fileIndex)
+		{
+			var file = document.getElementById(fileInputId).files[fileIndex];
+			var blob;
+			var reader = new FileReader();
+			reader.readAsArrayBuffer(file);
+			reader.onloadend  = function(evt)
+			{
+				xhr = new XMLHttpRequest();
+				xhr.open("POST", "wb.php?name=" + file.name, true);
+				
+				XMLHttpRequest.prototype.mySendAsBinary = function(text){
+					var ui8a = new Uint8Array(new Int8Array(text));
+					if(typeof window.Blob == "function")
+					{
+						blob = new Blob([ui8a]);
+					}else{
+						var bb = new (window.MozBlobBuilder || window.WebKitBlobBuilder || window.BlobBuilder)();
+						bb.append(ui8a);
+						blob = bb.getBlob();
+					}
+					
+					this.send(blob);
+				}
+				
+				var eventSource = xhr.upload || xhr;
+				eventSource.addEventListener("progress", function(e) {
+					var position = e.position || e.loaded;
+					var total = e.totalSize || e.total;
+					var percentage = Math.round((position/total)*100);
+				});
+				
+				xhr.onreadystatechange = function()
+				{
+					if(this.readyState == 4 && this.status == 200)
+					{
+						//Finish upload goes here
+						console.log("Upload done!");
+						document.getElementById("data").innerHTML = `
+							<h1>
+								File(s) uploaded successfully!
+							</h1>
+						`;
+					}
+				};
+				
+				xhr.mySendAsBinary(evt.target.result);
+			};
+		
+		}
+		
+		function pre_upload(){
+			var inp = document.getElementById('attach');
+			for (var i = 0; i < inp.files.length; ++i) {
+				upload("attach", i);
+			}
+		}
+	</script>
+</head>
+
+<body>
+	<div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 1px solid black; width: 80%; max-height: 700px; overflow-x: hidden; word-wrap: break-word; overflow-y: scroll; padding: 10px; font-family: verdana;">
+		<strong>Result Will Be Here. Try to upload something in form below:</strong><br />
+		<input type="file" id="attach" />
+		<button onclick="pre_upload()">Stream Upload</button>
+		<hr />
+		<div id="data"></div>
+	</div>
+
+	<div style="position: absolute; bottom: 2%; right: 0%; background: red; color: white; padding: 10px; font-family: arial;">
+		Design & Developed by <a href="http://mrhery.my/">Mr Hery</a>
+	</div>
+</body>
+</html>
